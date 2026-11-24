@@ -37,10 +37,30 @@ TYPY = {"predaj": ("🏠", "PREDAJ"), "najom": ("🔑", "NÁJOM")}
 
 
 # Druhy nehnuteľností – kľúč = časť adresy na Bazoši (reality.bazos.sk/predam/<druh>/)
-DRUHY = {
-    "byt": "Byt", "dom": "Dom", "pozemok": "Pozemok", "chata": "Chata/chalupa",
-    "garaz": "Garáž", "kancelaria": "Kancelária", "priestor": "Priestor", "ostatne": "Ostatné",
+DRUHY = {  # názvy podľa hlavných kategórií Nehnutelnosti.sk
+    "byt": "Byty", "dom": "Domy", "pozemok": "Pozemky", "chata": "Rekreačné nehnuteľnosti",
+    "garaz": "Garáže", "kancelaria": "Priestory a objekty", "priestor": "Priestory a objekty",
+    "ostatne": "Iné priestory a objekty",
 }
+
+# Presné druhy, ako ich píše Nehnutelnosti.sk (hľadá sa v texte detailu inzerátu)
+NEHN_DRUHY = [
+    "Garsónka", "Dvojgarsónka", "1 izbový byt", "2 izbový byt", "3 izbový byt", "4 izbový byt",
+    "5 a viac izbový byt", "Mezonet", "Apartmán", "Loft", "Iný byt",
+    "Rodinný dom", "Radový dom", "Vila", "Chata, drevenica, zrub", "Chalupa, rekreačný domček",
+    "Záhradná chatka", "Pozemok pre rodinné domy", "Pozemok pre bytovú výstavbu", "Rekreačný pozemok",
+    "Komerčná zóna", "Záhrada", "Sad", "Orná pôda", "Lúka, pasienok", "Les", "Vinica",
+    "Garáž", "Parkovacie miesto", "Kancelárie, administratívne priestory", "Obchodné priestory",
+    "Objekt pre obchod", "Polyfunkčný objekt", "Administratívny objekt", "Priestor pre výrobu",
+    "Skladové priestory", "Výrobné priestory", "Reštauračné priestory", "Ubytovacie zariadenie",
+]
+_NEHN_RE = re.compile("|".join(re.escape(d) for d in sorted(NEHN_DRUHY, key=len, reverse=True)))
+
+
+def druh_z_textu(text):
+    m = _NEHN_RE.search(text or "")
+    return m.group(0) if m else ""
+
 
 
 # Ako sa druh volá v adrese na jednotlivých portáloch (čo tu nie je = rovnaký názov ako kľúč)
@@ -649,12 +669,10 @@ def check_search(search, cfg, con, session, test=False):
         mark_seen(con, key, name, item["nazov"], item["url"])
         con.commit()
         item["typ"], item["hladanie"] = typ, name
-        item["druh"] = DRUHY.get(search.get("druh", ""), search.get("druh", "")) or odhad_druhu(item.get("nazov", ""))
-        # portál bez druhu v adrese → posielať len zvolené druhy (neurčený druh prejde)
-        if not search.get("druh"):
-            k = odhad_druhu(item.get("nazov", ""), kluc=True)
-            if k and k not in search.get("druhy", st.get("druhy", DRUHY)):
-                continue
+        if search.get("druh"):
+            item["druh"] = DRUHY.get(search["druh"], search["druh"])
+        else:  # druh tak, ako ho uvádza portál
+            item["druh"] = druh_z_textu(item.get("text_raw", "")) or odhad_druhu(item.get("nazov", ""))
         if passes_filters(item, st, typ):
             to_send.append(item)
 

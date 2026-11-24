@@ -20,7 +20,7 @@ heslo_aplikacie = ""    # 16-miestne heslo aplikácie (nie tvoje bežné heslo!)
 komu = ""               # prázdne = na ten istý Gmail; viac adries oddeľ čiarkou
 
 [nastavenia]
-# ČO SLEDOVAŤ – zmaž alebo pridaj podľa seba:
+# ČO SLEDOVAŤ NA BAZOŠI (Nehnutelnosti.sk berie to, čo máš zvolené priamo na portáli):
 #   "byt", "dom", "pozemok", "chata", "garaz", "kancelaria", "priestor", "ostatne"
 druhy = ["byt", "dom", "pozemok", "chata", "garaz"]
 interval_minut = 10        # ako často kontrolovať (min. 3, odporúčam 5–15)
