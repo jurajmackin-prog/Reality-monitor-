@@ -374,6 +374,8 @@ def tg_send(cfg, text, typ=None):
             time.sleep(10 * pokus)
             continue
         if r.ok:
+            ciel = {"predaj": "chat PREDAJ", "najom": "chat NÁJOM"}.get(typ, "chat")
+            log(f"  ✓ Telegram doručil ({ciel}, …{chat_id[-4:]}): {text.splitlines()[0][:60]}")
             break
         if r.status_code == 429:  # príliš veľa správ → počkať, koľko Telegram žiada
             try:
