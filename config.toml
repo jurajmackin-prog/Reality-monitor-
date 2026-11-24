@@ -34,7 +34,15 @@ iba_sukromnici = false     # true = inzeráty od realitiek vôbec neposielať (p
 # Nitriansky:    Komárno, Levice, Nitra, Nové Zámky, Šaľa, Topoľčany, Zlaté Moravce
 # Trenčiansky:   Bánovce nad Bebravou, Ilava, Myjava, Nové Mesto nad Váhom, Partizánske,
 #                Považská Bystrica, Prievidza, Púchov, Trenčín
-okresy = []                     # napr. ["Senec", "Pezinok", "Bratislava", "Trnava"]
+# Predvolene celé západné Slovensko (inzeráty z iných krajov sa nepošlú).
+# Chceš menej? Nechaj v zozname len tie, ktoré ťa zaujímajú.
+okresy = [
+  "Bratislava", "Malacky", "Pezinok", "Senec",
+  "Dunajská Streda", "Galanta", "Hlohovec", "Piešťany", "Senica", "Skalica", "Trnava",
+  "Komárno", "Levice", "Nitra", "Nové Zámky", "Šaľa", "Topoľčany", "Zlaté Moravce",
+  "Bánovce nad Bebravou", "Ilava", "Myjava", "Nové Mesto nad Váhom", "Partizánske",
+  "Považská Bystrica", "Prievidza", "Púchov", "Trenčín",
+]
 posielat_neznamy_okres = true   # keď sa okres nedá určiť, poslať aj tak?
 
 cena_od = 0                # 0 = bez limitu
@@ -71,8 +79,12 @@ nazov = "Bazoš – Nitra +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Nové Zámky/Komárno +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94001&humkreis=50&cenaod=&cenado=&order="
+nazov = "Bazoš – Komárno +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94501&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+nazov = "Bazoš – Levice +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=93401&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
 nazov = "Bazoš – Trenčín +50 km"

@@ -273,16 +273,21 @@ def tg_send(cfg, text):
         if not email_enabled(cfg):
             log("  (Telegram ani e-mail nie sú nastavené – správa len tu):\n" + text)
         return
-    try:
-        r = requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=20,
-        )
-        if not r.ok:
+    for pokus in range(1, 4):  # Telegram občas neodpovie hneď → 3 pokusy
+        try:
+            r = requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+                timeout=30,
+            )
+            if r.ok:
+                break
             log(f"  Telegram chyba {r.status_code}: {r.text[:200]}")
-    except requests.RequestException as e:
-        log(f"  Telegram nedostupný: {e}")
+            if r.status_code < 500 and r.status_code != 429:
+                break  # zlý token/chat_id – opakovanie nepomôže
+        except requests.RequestException as e:
+            log(f"  Telegram nedostupný (pokus {pokus}/3): {e}")
+        time.sleep(5 * pokus)
     time.sleep(1.2)
 
 
