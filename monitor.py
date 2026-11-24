@@ -36,6 +36,58 @@ LOK = None  # Lokator okresov – nastaví sa v main()
 TYPY = {"predaj": ("🏠", "PREDAJ"), "najom": ("🔑", "NÁJOM")}
 
 
+# Druhy nehnuteľností – kľúč = časť adresy na Bazoši (reality.bazos.sk/predam/<druh>/)
+DRUHY = {
+    "byt": "Byt", "dom": "Dom", "pozemok": "Pozemok", "chata": "Chata/chalupa",
+    "garaz": "Garáž", "kancelaria": "Kancelária", "priestor": "Priestor", "ostatne": "Ostatné",
+}
+
+
+# Ako sa druh volá v adrese na jednotlivých portáloch (čo tu nie je = rovnaký názov ako kľúč)
+DRUH_SLUGY = {
+    "nehnutelnosti.sk": {
+        "byt": "byty", "dom": "domy", "pozemok": "pozemky", "chata": "rekreacne-nehnutelnosti",
+        "garaz": "garaze", "kancelaria": "priestory-a-objekty", "priestor": "priestory-a-objekty",
+        "ostatne": "ine-priestory-a-objekty",
+    },
+}
+
+
+DRUH_SLOVA = [  # odhad druhu z nadpisu (keď ho portál v adrese nemá)
+    ("garaz", r"gar[aá][zž]|parkovac|st[aá]tie"), ("chata", r"chat|chalup|rekrea|drevenic|zrub"),
+    ("pozemok", r"pozem|parcel|stavebn[ýy] poz"), ("dom", r"rodinn[ýy] dom|\bdom\b|\bvil|\brd\b|radov"),
+    ("byt", r"byt|garz[oó]n|apartm|mezonet|izb"),
+    ("priestor", r"kancel|priestor|obchod|sklad|hal[ae]|objekt"),
+]
+
+
+def odhad_druhu(nazov, kluc=False):
+    t = (nazov or "").lower()
+    for d, pat in DRUH_SLOVA:
+        if re.search(pat, t):
+            return d if kluc else DRUHY[d]
+    return ""
+
+
+def rozbal_hladania(cfg):
+    """Hľadanie s {druh} v adrese sa rozbalí na jedno hľadanie pre každý zvolený druh."""
+    out, videne_url = [], set()
+    default = cfg["nastavenia"].get("druhy", ["byt"])
+    for h in cfg["hladanie"]:
+        url = h.get("url", "")
+        if "{druh}" not in url:
+            out.append(h)
+            continue
+        slugy = DRUH_SLUGY.get(base_domain(urlparse(url).netloc), {})
+        for d in h.get("druhy", default):
+            u = url.replace("{druh}", slugy.get(d, d))
+            if u in videne_url:
+                continue
+            videne_url.add(u)
+            out.append({**h, "url": u, "druh": d, "nazov": f"{h.get('nazov', '?')} – {DRUHY.get(d, d)}"})
+    return out
+
+
 def typ_hladania(search):
     t = str(search.get("typ", "")).lower().replace("á", "a")
     if t in TYPY:
@@ -164,7 +216,7 @@ def is_detail_link(abs_url, search_domain):
         return False
     if base_domain(p.netloc) != search_domain:
         return False
-    if SKIP_LINK.search(abs_url):
+    if SKIP_LINK.search(abs_url) or "developersky-projekt" in abs_url:
         return False
     patterns = None
     for dom, pats in DETAIL_PATTERNS.items():
@@ -351,6 +403,7 @@ def send_digest(cfg, typ, items):
             chunk += head
         price = format_price(it)
         line = (f"\n{BADGE_SHORT.get(it.get('predajca'), '•')} "
+                f"{('[' + html.escape(it['druh']) + '] ') if it.get('druh') else ''}"
                 f"{html.escape((it.get('nazov') or '(bez názvu)')[:90])}"
                 f"{' – ' + price if price else ''}\n{it['url']}\n")
         if len(chunk) + len(line) > 3800:
@@ -458,7 +511,8 @@ def format_message(item):
     typ = item.get("typ", "predaj")
     emoji, label = TYPY[typ]
     badge = {"sukromnik": "🟢 SÚKROMNÍK", "rk": "🏢 realitka", "nezname": "❔ predajca neznámy"}
-    lines = [f"{emoji} <b>{label}</b> – nový inzerát"]
+    druh = f" · {html.escape(item['druh'])}" if item.get("druh") else ""
+    lines = [f"{emoji} <b>{label}{druh}</b> – nový inzerát"]
     lines.append(html.escape(item.get("nazov") or "(bez názvu)"))
     if item.get("cena"):
         lines.append(f"💶 {format_price(item)}")
@@ -523,7 +577,11 @@ def check_search(search, cfg, con, session, test=False):
         # zoradené od najnovších → keď je celá strana už videná, ďalej nemusíme
         if initialized and page_items and all(is_seen(con, k) for k in page_items):
             break
-        page_url = find_next_page(page_html, page_url)
+        nxt = find_next_page(page_html, page_url)
+        if not nxt and page_items and "nehnutelnosti.sk" in url:
+            sep = "&" if "?" in url else "?"
+            nxt = f"{url}{sep}page={page_no + 1}"
+        page_url = nxt
         if page_url and page_no < max_pages:
             polite_pause()
 
@@ -573,6 +631,12 @@ def check_search(search, cfg, con, session, test=False):
         mark_seen(con, key, name, item["nazov"], item["url"])
         con.commit()
         item["typ"], item["hladanie"] = typ, name
+        item["druh"] = DRUHY.get(search.get("druh", ""), search.get("druh", "")) or odhad_druhu(item.get("nazov", ""))
+        # portál bez druhu v adrese → posielať len zvolené druhy (neurčený druh prejde)
+        if not search.get("druh"):
+            k = odhad_druhu(item.get("nazov", ""), kluc=True)
+            if k and k not in search.get("druhy", st.get("druhy", DRUHY)):
+                continue
         if passes_filters(item, st, typ):
             to_send.append(item)
 
@@ -593,7 +657,7 @@ def dispatch(cfg, typ, items):
 
 
 def run_once(cfg, con, session, test=False):
-    searches = cfg["hladanie"]
+    searches = rozbal_hladania(cfg)
     if not searches:
         log("V config.toml nie je žiadne [[hladanie]].")
     nove = {t: [] for t in TYPY}
