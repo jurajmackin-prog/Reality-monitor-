@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       rezim:
-        description: "raz = normálna kontrola, test = len ukáže čo nájde + testovacia správa"
+        description: "test = skúška + testovacia správa, raz = normálna kontrola, chatid = zistí Id skupín"
         required: true
         default: "test"
         type: choice
-        options: [test, raz]
+        options: [test, raz, chatid]
 
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
-        run: python monitor.py --${{ github.event.inputs.rezim || 'raz' }}
+        run: python monitor.py --${{ github.event.inputs.rezim == 'chatid' && 'chat-id' || github.event.inputs.rezim || 'raz' }}
 
       - name: Uloženie pamäte (videné inzeráty)
         if: always()
