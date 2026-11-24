@@ -19,7 +19,7 @@ import sqlite3
 import sys
 import time
 import tomllib
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -37,10 +37,30 @@ TYPY = {"predaj": ("🏠", "PREDAJ"), "najom": ("🔑", "NÁJOM")}
 
 
 # Druhy nehnuteľností – kľúč = časť adresy na Bazoši (reality.bazos.sk/predam/<druh>/)
-DRUHY = {
-    "byt": "Byt", "dom": "Dom", "pozemok": "Pozemok", "chata": "Chata/chalupa",
-    "garaz": "Garáž", "kancelaria": "Kancelária", "priestor": "Priestor", "ostatne": "Ostatné",
+DRUHY = {  # názvy podľa hlavných kategórií Nehnutelnosti.sk
+    "byt": "Byty", "dom": "Domy", "pozemok": "Pozemky", "chata": "Rekreačné nehnuteľnosti",
+    "garaz": "Garáže", "kancelaria": "Priestory a objekty", "priestor": "Priestory a objekty",
+    "ostatne": "Iné priestory a objekty",
 }
+
+# Presné druhy, ako ich píše Nehnutelnosti.sk (hľadá sa v texte detailu inzerátu)
+NEHN_DRUHY = [
+    "Garsónka", "Dvojgarsónka", "1 izbový byt", "2 izbový byt", "3 izbový byt", "4 izbový byt",
+    "5 a viac izbový byt", "Mezonet", "Apartmán", "Loft", "Iný byt",
+    "Rodinný dom", "Radový dom", "Vila", "Chata, drevenica, zrub", "Chalupa, rekreačný domček",
+    "Záhradná chatka", "Pozemok pre rodinné domy", "Pozemok pre bytovú výstavbu", "Rekreačný pozemok",
+    "Komerčná zóna", "Záhrada", "Sad", "Orná pôda", "Lúka, pasienok", "Les", "Vinica",
+    "Garáž", "Parkovacie miesto", "Kancelárie, administratívne priestory", "Obchodné priestory",
+    "Objekt pre obchod", "Polyfunkčný objekt", "Administratívny objekt", "Priestor pre výrobu",
+    "Skladové priestory", "Výrobné priestory", "Reštauračné priestory", "Ubytovacie zariadenie",
+]
+_NEHN_RE = re.compile("|".join(re.escape(d) for d in sorted(NEHN_DRUHY, key=len, reverse=True)))
+
+
+def druh_z_textu(text):
+    m = _NEHN_RE.search(text or "")
+    return m.group(0) if m else ""
+
 
 
 # Ako sa druh volá v adrese na jednotlivých portáloch (čo tu nie je = rovnaký názov ako kľúč)
@@ -180,7 +200,72 @@ def db_connect():
         " kluc TEXT PRIMARY KEY, hladanie TEXT, nazov TEXT, url TEXT, prvykrat TEXT)"
     )
     con.execute("CREATE TABLE IF NOT EXISTS hladania (nazov TEXT PRIMARY KEY, od TEXT)")
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS odtlacky ("
+        " url TEXT PRIMARY KEY, typ TEXT, okres TEXT, cena INTEGER, slova TEXT, kedy TEXT)"
+    )
     return con
+
+
+# ---------------------------------------------------------------- duplicity (odtlačky)
+
+STOP_SLOVA = set("""a aj na v vo s so z zo k ku do pre pri od o u za po pod nad
+predaj predam predám predáme prenajom prenájom prenajmem prenajmeme ponuka ponukam ponúkam ponúkame
+na predaj na prenajom novy nova nove novinka top super krasny krasna pekny pekna exkluzivne
+cena znizena nova cena eur m2 m""".split())
+
+
+def _slova(text):
+    t = okresy.norm(text or "").lower()
+    t = re.sub(r"(\d)\s*-?\s*(i|izb|izbovy|izbovy byt|izb\.)\b", r"\1izb", t)
+    return {w for w in re.findall(r"[a-z0-9]+", t) if len(w) > 1 and w not in STOP_SLOVA}
+
+
+def najdi_duplicitu(con, item, dni=30):
+    """Nájde rovnakú nehnuteľnosť videnú za posledných `dni` dní pod iným odkazom."""
+    slova = _slova(item.get("nazov", ""))
+    if len(slova) < 2:
+        return None
+    od = (datetime.now() - timedelta(days=dni)).isoformat()
+    best, best_sc = None, 0.0
+    for url, okres, cena, sl in con.execute(
+        "SELECT url, okres, cena, slova FROM odtlacky WHERE typ=? AND kedy>=? AND url<>?",
+        (item.get("typ", "predaj"), od, item["url"]),
+    ):
+        if item.get("okres") and okres and okres != item["okres"]:
+            continue
+        stare = set(sl.split())
+        if not stare:
+            continue
+        sc = len(slova & stare) / len(slova | stare)
+        c1, c2 = cena or 0, item.get("cena") or 0
+        if c1 and c2:
+            if abs(c1 - c2) / max(c1, c2) > 0.15:
+                continue
+            sc += 0.15  # podobná cena zvyšuje istotu
+        if sc > best_sc:
+            best, best_sc = (url, cena), sc
+    return best if best_sc >= 0.6 else None
+
+
+def uloz_odtlacok(con, item):
+    con.execute(
+        "INSERT OR REPLACE INTO odtlacky VALUES (?, ?, ?, ?, ?, ?)",
+        (item["url"], item.get("typ", "predaj"), item.get("okres", ""), item.get("cena") or 0,
+         " ".join(sorted(_slova(item.get("nazov", "")))), datetime.now().isoformat()),
+    )
+
+
+def poznamka_k_duplicite(item, dup):
+    stara_url, stara_cena = dup
+    portal = "iný portál" if base_domain(urlparse(stara_url).netloc) != base_domain(urlparse(item["url"]).netloc) else ""
+    nova = item.get("cena") or 0
+    if stara_cena and nova and nova < stara_cena * 0.99:
+        p = lambda x: f"{x:,}".replace(",", " ") + " €"
+        return f"💶 ZNÍŽENÁ CENA: {p(stara_cena)} → {p(nova)} (pôvodný inzerát: {stara_url})"
+    if portal:
+        return f"♻️ Rovnaká nehnuteľnosť už bola na inom portáli: {stara_url}"
+    return f"♻️ ZNOVU PRIDANÝ inzerát (pôvodný: {stara_url})"
 
 
 def is_initialized(con, name):
@@ -420,7 +505,8 @@ def send_digest(cfg, typ, items):
                 chunk = header.replace("nových", "nových (pokr.)")
             chunk += head
         price = format_price(it)
-        line = (f"\n{BADGE_SHORT.get(it.get('predajca'), '•')} "
+        znacka = ("💶 " if "ZNÍŽENÁ" in it.get("poznamka", "") else "♻️ ") if it.get("poznamka") else ""
+        line = (f"\n{znacka}{BADGE_SHORT.get(it.get('predajca'), '•')} "
                 f"{('[' + html.escape(it['druh']) + '] ') if it.get('druh') else ''}"
                 f"{html.escape((it.get('nazov') or '(bez názvu)')[:90])}"
                 f"{' – ' + price if price else ''}\n{it['url']}\n")
@@ -530,7 +616,10 @@ def format_message(item):
     emoji, label = TYPY[typ]
     badge = {"sukromnik": "🟢 SÚKROMNÍK", "rk": "🏢 realitka", "nezname": "❔ predajca neznámy"}
     druh = f" · {html.escape(item['druh'])}" if item.get("druh") else ""
-    lines = [f"{emoji} <b>{label}{druh}</b> – nový inzerát"]
+    stav = "nový inzerát" if not item.get("poznamka") else ("znížená cena" if "ZNÍŽENÁ" in item["poznamka"] else "znovu pridaný")
+    lines = [f"{emoji} <b>{label}{druh}</b> – {stav}"]
+    if item.get("poznamka"):
+        lines.append(html.escape(item["poznamka"]))
     lines.append(html.escape(item.get("nazov") or "(bez názvu)"))
     if item.get("cena"):
         lines.append(f"💶 {format_price(item)}")
@@ -649,12 +738,16 @@ def check_search(search, cfg, con, session, test=False):
         mark_seen(con, key, name, item["nazov"], item["url"])
         con.commit()
         item["typ"], item["hladanie"] = typ, name
-        item["druh"] = DRUHY.get(search.get("druh", ""), search.get("druh", "")) or odhad_druhu(item.get("nazov", ""))
-        # portál bez druhu v adrese → posielať len zvolené druhy (neurčený druh prejde)
-        if not search.get("druh"):
-            k = odhad_druhu(item.get("nazov", ""), kluc=True)
-            if k and k not in search.get("druhy", st.get("druhy", DRUHY)):
-                continue
+        if search.get("druh"):
+            item["druh"] = DRUHY.get(search["druh"], search["druh"])
+        else:  # druh tak, ako ho uvádza portál
+            item["druh"] = druh_z_textu(item.get("text_raw", "")) or odhad_druhu(item.get("nazov", ""))
+        dup = najdi_duplicitu(con, item)
+        uloz_odtlacok(con, item)
+        con.commit()
+        if dup:
+            item["poznamka"] = poznamka_k_duplicite(item, dup)
+            log(f"  Duplicita: {item.get('nazov','')[:50]} ~ {dup[0]}")
         if passes_filters(item, st, typ):
             to_send.append(item)
 
