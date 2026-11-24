@@ -24,7 +24,7 @@ interval_minut = 10        # ako často kontrolovať (min. 3, odporúčam 5–15
 strany = 5                 # koľko strán výsledkov max. prejsť (zastaví skôr, keď narazí na už videné)
 max_samostatnych_sprav = 5 # viac nových naraz → príde jeden súhrn (súkromníci navrchu)
 otvarat_detail = true      # otvorí každý NOVÝ inzerát → zistí cenu a či je to súkromník
-iba_sukromnici = false     # true = inzeráty od realitiek vôbec neposielať (pri celom západe odporúčam)
+iba_sukromnici = true      # true = inzeráty od realitiek vôbec neposielať (pri celom západe odporúčam)
 
 # --- OKRESY ---
 # Každá správa ukáže okres (📍) a súhrny sú zoskupené podľa okresov.
@@ -41,10 +41,7 @@ iba_sukromnici = false     # true = inzeráty od realitiek vôbec neposielať (p
 # Chceš menej? Nechaj v zozname len tie, ktoré ťa zaujímajú.
 okresy = [
   "Bratislava", "Malacky", "Pezinok", "Senec",
-  "Dunajská Streda", "Galanta", "Hlohovec", "Piešťany", "Senica", "Skalica", "Trnava",
-  "Komárno", "Levice", "Nitra", "Nové Zámky", "Šaľa", "Topoľčany", "Zlaté Moravce",
-  "Bánovce nad Bebravou", "Ilava", "Myjava", "Nové Mesto nad Váhom", "Partizánske",
-  "Považská Bystrica", "Prievidza", "Púchov", "Trenčín",
+  "Dunajská Streda", "Galanta", "Trnava",
 ]
 posielat_neznamy_okres = true   # keď sa okres nedá určiť, poslať aj tak?
 
@@ -66,7 +63,7 @@ cena_od = 0
 cena_do = 0          # napr. 900  (€ mesačne)
 
 # ---------------------------------------------------------------------
-#  HĽADANIA – ZÁPADNÉ SLOVENSKO
+#  HĽADANIA – OKRUH 40 KM OKOLO BRATISLAVY
 #  Každé hľadanie má typ = "predaj" alebo "najom".
 #  Rovnaký inzerát z viacerých hľadaní príde len raz.
 #
@@ -76,37 +73,12 @@ cena_do = 0          # napr. 900  (€ mesačne)
 # ---------------------------------------------------------------------
 
 # ===================== 🏠 PREDAJ =====================
-# Bazoš nemá filter na kraj → 6 okruhov po 50 km pokrýva celý západ
+# Okruh 40 km okolo Bratislavy
 
 [[hladanie]]
 typ = "predaj"
-nazov = "Bazoš predaj – Bratislava +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "predaj"
-nazov = "Bazoš predaj – Trnava/Senica +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=90501&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "predaj"
-nazov = "Bazoš predaj – Nitra +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "predaj"
-nazov = "Bazoš predaj – Komárno +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94501&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "predaj"
-nazov = "Bazoš predaj – Levice +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=93401&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "predaj"
-nazov = "Bazoš predaj – Trenčín +50 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=91101&humkreis=50&cenaod=&cenado=&order="
+nazov = "Bazoš predaj – Bratislava +40 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
 
 [[hladanie]]
 typ = "predaj"
@@ -127,33 +99,8 @@ url = ""
 
 [[hladanie]]
 typ = "najom"
-nazov = "Bazoš nájom – Bratislava +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "najom"
-nazov = "Bazoš nájom – Trnava/Senica +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=90501&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "najom"
-nazov = "Bazoš nájom – Nitra +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "najom"
-nazov = "Bazoš nájom – Komárno +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=94501&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "najom"
-nazov = "Bazoš nájom – Levice +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=93401&humkreis=50&cenaod=&cenado=&order="
-
-[[hladanie]]
-typ = "najom"
-nazov = "Bazoš nájom – Trenčín +50 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=91101&humkreis=50&cenaod=&cenado=&order="
+nazov = "Bazoš nájom – Bratislava +40 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
 
 [[hladanie]]
 typ = "najom"
