@@ -85,8 +85,10 @@ url = "https://reality.bazos.sk/predam/{druh}/?hledat=&rubriky=reality&hlokalita
 
 [[hladanie]]
 typ = "predaj"
-nazov = "Nehnutelnosti.sk – predaj"
-url = ""
+nazov = "Nehnutelnosti.sk predaj"
+# všetky druhy, lokality podľa tvojho výberu na portáli
+url = "https://www.nehnutelnosti.sk/vysledky/predaj?locations=0_i9128BtwC-IGpZQrnK&locations=100010663&locations=100010659&locations=100001009&locations=100010651&locations=100010555&locations=100010306"
+strany = 3
 
 [[hladanie]]
 typ = "predaj"
@@ -108,8 +110,9 @@ url = "https://reality.bazos.sk/prenajmu/{druh}/?hledat=&rubriky=reality&hlokali
 
 [[hladanie]]
 typ = "najom"
-nazov = "Nehnutelnosti.sk – prenájom"
-url = ""
+nazov = "Nehnutelnosti.sk nájom"
+url = "https://www.nehnutelnosti.sk/vysledky/prenajom?locations=0_i9128BtwC-IGpZQrnK&locations=100010663&locations=100010659&locations=100001009&locations=100010651&locations=100010555&locations=100010306"
+strany = 3
 
 [[hladanie]]
 typ = "najom"
