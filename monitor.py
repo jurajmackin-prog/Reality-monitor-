@@ -32,6 +32,16 @@ import okresy
 
 LOK = None  # Lokator okresov – nastaví sa v main()
 
+# Predaj a nájom sa nikdy nemiešajú – každý má vlastné správy, súhrny aj e-maily
+TYPY = {"predaj": ("🏠", "PREDAJ"), "najom": ("🔑", "NÁJOM")}
+
+
+def typ_hladania(search):
+    t = str(search.get("typ", "")).lower().replace("á", "a")
+    if t in TYPY:
+        return t
+    return "najom" if re.search(r"prenaj|najom|/prenajom|prenajmu", search.get("url", ""), re.I) else "predaj"
+
 BASE = Path(__file__).resolve().parent
 CONFIG_PATH = BASE / "config.toml"
 DB_PATH = BASE / "videne.db"
@@ -231,7 +241,9 @@ def analyze_detail(page_html):
 
 # ---------------------------------------------------------------- filtre
 
-def passes_filters(item, st):
+def passes_filters(item, st, typ="predaj"):
+    # [nastavenia.predaj] / [nastavenia.najom] prepíšu spoločné nastavenia
+    st = {**st, **(st.get(typ) or {})}
     text = (item.get("nazov", "") + " " + item.get("text", "")).lower()
     must = [w.lower() for w in st.get("musi_obsahovat", [])]
     must_not = [w.lower() for w in st.get("nesmie_obsahovat", [])]
@@ -259,16 +271,20 @@ def passes_filters(item, st):
 
 # ---------------------------------------------------------------- Telegram
 
-def tg_credentials(cfg):
-    """Token a chat_id: najprv z premenných prostredia (GitHub Secrets), potom z config.toml."""
+def tg_credentials(cfg, typ=None):
+    """Token a chat_id: najprv z premenných prostredia (GitHub Secrets), potom z config.toml.
+    Voliteľne TELEGRAM_CHAT_ID_PREDAJ / TELEGRAM_CHAT_ID_NAJOM = iný chat pre daný typ."""
     tg = cfg.get("telegram", {})
     token = os.environ.get("TELEGRAM_TOKEN") or tg.get("token", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID") or str(tg.get("chat_id", ""))
+    if typ:
+        chat_id = (os.environ.get(f"TELEGRAM_CHAT_ID_{typ.upper()}") or str(tg.get(f"chat_id_{typ}", ""))
+                   or chat_id)
     return token.strip(), chat_id.strip()
 
 
-def tg_send(cfg, text):
-    token, chat_id = tg_credentials(cfg)
+def tg_send(cfg, text, typ=None):
+    token, chat_id = tg_credentials(cfg, typ)
     if not token or "SEM_" in token or not chat_id:
         if not email_enabled(cfg):
             log("  (Telegram ani e-mail nie sú nastavené – správa len tu):\n" + text)
@@ -294,10 +310,17 @@ def tg_send(cfg, text):
 BADGE_SHORT = {"sukromnik": "🟢", "rk": "🏢", "nezname": "❔"}
 
 
-def send_digest(cfg, search_name, items):
-    """Veľa nových naraz → jeden súhrn (rozdelený podľa limitu Telegramu)."""
-    header = f"🏠 <b>{len(items)} nových inzerátov</b> – {html.escape(search_name)}\n"
-    # súkromníci navrch
+def format_price(item):
+    if not item.get("cena"):
+        return ""
+    p = f"{item['cena']:,} €".replace(",", " ")
+    return p + " / mes." if item.get("typ") == "najom" and item["cena"] < 10000 else p
+
+
+def send_digest(cfg, typ, items):
+    """Veľa nových naraz → jeden súhrn pre daný typ (rozdelený podľa limitu Telegramu)."""
+    emoji, label = TYPY[typ]
+    header = f"{emoji} <b>{label}: {len(items)} nových inzerátov</b>\n"
     order = {"sukromnik": 0, "nezname": 1, "rk": 2}
     items = sorted(items, key=lambda i: (i.get("okres") or "~", order.get(i.get("predajca"), 1)))
     chunk, current = header, None
@@ -308,17 +331,18 @@ def send_digest(cfg, search_name, items):
             kraj = LOK.kraj(okres) if LOK else ""
             head = f"\n📍 <b>{html.escape(okres)}</b>" + (f" · {kraj}" if kraj else "") + "\n"
             if len(chunk) + len(head) > 3800:
-                tg_send(cfg, chunk)
+                tg_send(cfg, chunk, typ)
                 chunk = header.replace("nových", "nových (pokr.)")
             chunk += head
-        price = f" – {it['cena']:,} €".replace(",", " ") if it.get("cena") else ""
+        price = format_price(it)
         line = (f"\n{BADGE_SHORT.get(it.get('predajca'), '•')} "
-                f"{html.escape((it.get('nazov') or '(bez názvu)')[:90])}{price}\n{it['url']}\n")
+                f"{html.escape((it.get('nazov') or '(bez názvu)')[:90])}"
+                f"{' – ' + price if price else ''}\n{it['url']}\n")
         if len(chunk) + len(line) > 3800:
-            tg_send(cfg, chunk)
+            tg_send(cfg, chunk, typ)
             chunk = header.replace("nových", "nových (pokr.)")
         chunk += line
-    tg_send(cfg, chunk)
+    tg_send(cfg, chunk, typ)
 
 
 # ---------------------------------------------------------------- E-mail
@@ -358,20 +382,33 @@ def email_send(cfg, subject, body_html, body_text=""):
 
 
 def flush_email(cfg):
-    """Pošle jeden e-mail so všetkými novými inzerátmi z tejto kontroly."""
+    """Pošle e-maily z tejto kontroly – zvlášť PREDAJ a zvlášť NÁJOM."""
     global EMAIL_BUFFER, EMAIL_WARN
     if not email_enabled(cfg) or not (EMAIL_BUFFER or EMAIL_WARN):
         EMAIL_BUFFER, EMAIL_WARN = [], []
         return
-    items = EMAIL_BUFFER
+    all_items = EMAIL_BUFFER
+    if not all_items:
+        _email_one(cfg, None, [])
+    for typ in TYPY:
+        group = [(n, it) for n, it in all_items if it.get("typ", "predaj") == typ]
+        if group:
+            _email_one(cfg, typ, group)
+            EMAIL_WARN = []
+    EMAIL_BUFFER, EMAIL_WARN = [], []
+
+
+
+def _email_one(cfg, typ, items):
+    prefix = f"{TYPY[typ][0]} [{TYPY[typ][1]}] " if typ else ""
     n_priv = sum(1 for _, it in items if it.get("predajca") == "sukromnik")
     if len(items) == 1:
         _, it = items[0]
-        subject = f"🏠 {it.get('nazov') or 'Nový inzerát'}"[:120]
+        subject = (prefix + (it.get('nazov') or 'Nový inzerát'))[:120]
         if it.get("okres"):
             subject += f" – {it['okres']}"
     elif items:
-        subject = f"🏠 {len(items)} nových inzerátov" + (f" ({n_priv}× súkromník)" if n_priv else "")
+        subject = prefix + f"{len(items)} nových inzerátov" + (f" ({n_priv}× súkromník)" if n_priv else "")
     else:
         subject = "⚠️ Realitný monitor – upozornenie"
 
@@ -390,7 +427,7 @@ def flush_email(cfg):
             parts.append(f'<h3 style="margin:18px 0 6px">📍 {html.escape(okres)}'
                          + (f' <span style="color:#777;font-weight:normal">· {kraj}</span>' if kraj else "") + "</h3>")
             lines_txt.append(f"\n== {okres} ==")
-        price = f"{it['cena']:,} €".replace(",", " ") if it.get("cena") else "cena neuvedená"
+        price = format_price(it) or "cena neuvedená"
         title = html.escape(it.get("nazov") or "(bez názvu)")
         parts.append(
             f'<p style="margin:0 0 12px"><a href="{html.escape(it["url"])}" style="font-weight:bold">{title}</a><br>'
@@ -399,15 +436,17 @@ def flush_email(cfg):
         lines_txt.append(f"{it.get('nazov','')} | {price} | {it['url']}")
     parts.append("</div>")
     email_send(cfg, subject, "".join(parts), "\n".join(lines_txt))
-    EMAIL_BUFFER, EMAIL_WARN = [], []
 
 
-def format_message(search_name, item):
+
+def format_message(item):
+    typ = item.get("typ", "predaj")
+    emoji, label = TYPY[typ]
     badge = {"sukromnik": "🟢 SÚKROMNÍK", "rk": "🏢 realitka", "nezname": "❔ predajca neznámy"}
-    lines = [f"🏠 <b>Nový inzerát</b> – {html.escape(search_name)}"]
+    lines = [f"{emoji} <b>{label}</b> – nový inzerát"]
     lines.append(html.escape(item.get("nazov") or "(bez názvu)"))
     if item.get("cena"):
-        lines.append(f"💶 {item['cena']:,} €".replace(",", " "))
+        lines.append(f"💶 {format_price(item)}")
     if item.get("predajca"):
         lines.append(badge.get(item["predajca"], ""))
     if item.get("okres"):
@@ -444,8 +483,9 @@ zero_counter = {}
 def check_search(search, cfg, con, session, test=False):
     name, url = search.get("nazov", "?"), search.get("url", "")
     if not url.startswith("http") or search.get("vypnute"):
-        return 0
+        return []
     st = cfg["nastavenia"]
+    typ = typ_hladania(search)
     max_pages = int(search.get("strany", st.get("strany", 3)))
     initialized = is_initialized(con, name)
     log(f"Kontrolujem: {name}")
@@ -474,7 +514,7 @@ def check_search(search, cfg, con, session, test=False):
             EMAIL_WARN.append(f"⚠️ „{html.escape(name)}“ 3× za sebou nenašiel žiadne inzeráty – skontroluj URL.")
             tg_send(cfg, f"⚠️ Monitor: „{html.escape(name)}“ 3× za sebou nenašiel žiadne inzeráty. "
                          "Skontroluj URL alebo sa zmenil web.")
-        return 0
+        return []
     zero_counter[name] = 0
 
     if test:
@@ -489,7 +529,7 @@ def check_search(search, cfg, con, session, test=False):
                 except requests.RequestException as e:
                     extra = f"   [detail chyba: {e}]"
             print(f"    • {item['nazov'][:70]}  →  {item['url']}{extra}")
-        return 0
+        return []
 
     if not initialized:
         for key, item in listings.items():
@@ -497,7 +537,7 @@ def check_search(search, cfg, con, session, test=False):
         mark_initialized(con, name)
         con.commit()
         log("  Prvé spustenie – súčasné inzeráty si zapamätám, upozorním až na nové.")
-        return 0
+        return []
 
     new = [(k, it) for k, it in listings.items() if not is_seen(con, k)]
     to_send = []
@@ -512,29 +552,42 @@ def check_search(search, cfg, con, session, test=False):
         item["okres"] = LOK.najdi(item.get("nazov", ""), item.get("text_raw", "")) if LOK else ""
         mark_seen(con, key, name, item["nazov"], item["url"])
         con.commit()
-        if passes_filters(item, st):
+        item["typ"], item["hladanie"] = typ, name
+        if passes_filters(item, st, typ):
             to_send.append(item)
 
-    EMAIL_BUFFER.extend((name, it) for it in to_send)
-    limit = int(st.get("max_samostatnych_sprav", 5))
-    if len(to_send) > limit:
-        send_digest(cfg, name, to_send)
+    log(f"  Nových: {len(new)}, na odoslanie po filtroch: {len(to_send)}")
+    return to_send
+
+
+def dispatch(cfg, typ, items):
+    """Pošle nové inzeráty jedného typu – pár samostatne, viac ako súhrn."""
+    if not items:
+        return
+    limit = int(cfg["nastavenia"].get("max_samostatnych_sprav", 5))
+    if len(items) > limit:
+        send_digest(cfg, typ, items)
     else:
-        for item in to_send:
-            tg_send(cfg, format_message(name, item))
-    log(f"  Nových: {len(new)}, odoslaných po filtroch: {len(to_send)}")
-    return len(to_send)
+        for item in items:
+            tg_send(cfg, format_message(item), typ)
 
 
 def run_once(cfg, con, session, test=False):
     searches = cfg["hladanie"]
     if not searches:
         log("V config.toml nie je žiadne [[hladanie]].")
-    for s in searches:
-        check_search(s, cfg, con, session, test=test)
+    nove = {t: [] for t in TYPY}
+    for s_ in searches:
+        found = check_search(s_, cfg, con, session, test=test) or []
+        for it in found:
+            nove[it.get("typ", "predaj")].append(it)
         polite_pause()
-    if not test:
-        flush_email(cfg)
+    if test:
+        return
+    for typ, items in nove.items():
+        dispatch(cfg, typ, items)
+        EMAIL_BUFFER.extend((it["hladanie"], it) for it in items)
+    flush_email(cfg)
 
 
 def main():

@@ -57,6 +57,21 @@ Ak chceš upozornenia aj na e-mail (alebo namiesto Telegramu):
 
 Z každej kontroly príde **najviac 1 e-mail** so všetkými novými inzerátmi, zoradenými podľa okresov, so súkromníkmi navrchu a s klikateľnými odkazmi. Ak chceš len e-mail, Telegram secrets jednoducho nepridávaj.
 
+## Predaj a nájom oddelene
+
+Monitor sleduje **predaj aj prenájom bytov** na celom západnom Slovensku a nikdy ich nemieša:
+- 🏠 **PREDAJ**: vlastné správy, vlastné súhrny, vlastné e-maily (predmet začína `[PREDAJ]`)
+- 🔑 **NÁJOM**: vlastné správy, vlastné súhrny s cenou za mesiac, vlastné e-maily (predmet začína `[NÁJOM]`)
+
+**Chceš ich mať v dvoch rôznych Telegram chatoch?** Odporúčam to, je to najprehľadnejšie.
+1. V Telegrame vytvor 2 skupiny, napr. *Reality – Predaj* a *Reality – Nájom*, a do oboch pridaj svojho bota **@juraj_reality_bot**.
+2. Do každej skupiny pridaj aj **@userinfobot**. Napíše ti Id skupiny (záporné číslo, napr. `-1001234567890`). Potom ho zo skupiny môžeš odstrániť.
+3. Do GitHub Secrets pridaj `TELEGRAM_CHAT_ID_PREDAJ` a `TELEGRAM_CHAT_ID_NAJOM` s týmito číslami.
+
+Bez nich ide všetko do tvojho bežného chatu, ale stále oddelene označené 🏠 / 🔑.
+
+**Rôzne cenové limity:** v `config.toml` → `[nastavenia.predaj]` a `[nastavenia.najom]` (napr. nájom do 900 €).
+
 ## Krok 6 – Test (2 min)
 
 1. Hore záložka **Actions**. Ak sa pýta, klikni **I understand… enable them**.
