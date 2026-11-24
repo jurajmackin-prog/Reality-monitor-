@@ -289,21 +289,36 @@ def tg_send(cfg, text, typ=None):
         if not email_enabled(cfg):
             log("  (Telegram ani e-mail nie sú nastavené – správa len tu):\n" + text)
         return
-    for pokus in range(1, 4):  # Telegram občas neodpovie hneď → 3 pokusy
+    for pokus in range(1, 5):
         try:
             r = requests.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 data={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-                timeout=30,
+                timeout=(10, 60),  # 10 s na pripojenie, 60 s na odpoveď
             )
-            if r.ok:
-                break
-            log(f"  Telegram chyba {r.status_code}: {r.text[:200]}")
-            if r.status_code < 500 and r.status_code != 429:
-                break  # zlý token/chat_id – opakovanie nepomôže
+        except requests.exceptions.ReadTimeout:
+            # požiadavka odišla, len odpoveď neprišla → správa takmer isto doručená,
+            # znovu ju neposielame (inak by prišla dvakrát a Telegram by nás pribrzdil)
+            log("  Telegram odpovedal pomaly – správa pravdepodobne doručená.")
+            break
         except requests.RequestException as e:
-            log(f"  Telegram nedostupný (pokus {pokus}/3): {e}")
-        time.sleep(5 * pokus)
+            log(f"  Telegram nedostupný (pokus {pokus}/4): {e}")
+            time.sleep(10 * pokus)
+            continue
+        if r.ok:
+            break
+        if r.status_code == 429:  # príliš veľa správ → počkať, koľko Telegram žiada
+            try:
+                wait = int(r.json().get("parameters", {}).get("retry_after", 30))
+            except ValueError:
+                wait = 30
+            log(f"  Telegram žiada pauzu {wait} s.")
+            time.sleep(min(wait, 120) + 1)
+            continue
+        log(f"  Telegram chyba {r.status_code}: {r.text[:200]}")
+        if r.status_code < 500:
+            break  # zlý token/chat_id – opakovanie nepomôže
+        time.sleep(10 * pokus)
     time.sleep(1.2)
 
 
