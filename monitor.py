@@ -474,20 +474,25 @@ def format_message(item):
 
 
 def print_chat_id(cfg):
+    """Vypíše všetky chaty a skupiny, kde je bot (aj keď mu tam nikto nepísal)."""
     token, _ = tg_credentials(cfg)
     if not token or "SEM_" in token:
-        sys.exit("Najprv vlož token od @BotFather do config.toml.")
-    r = requests.get(f"https://api.telegram.org/bot{token}/getUpdates", timeout=20).json()
+        sys.exit("Chýba TELEGRAM_TOKEN.")
+    r = requests.get(f"https://api.telegram.org/bot{token}/getUpdates",
+                     params={"allowed_updates": '["message","my_chat_member","channel_post"]'},
+                     timeout=30).json()
     chats = {}
     for u in r.get("result", []):
-        msg = u.get("message") or u.get("channel_post") or {}
-        c = msg.get("chat")
-        if c:
-            chats[c["id"]] = c.get("first_name") or c.get("title") or ""
+        for key in ("message", "my_chat_member", "channel_post", "edited_message"):
+            c = (u.get(key) or {}).get("chat")
+            if c:
+                chats[c["id"]] = (c.get("type", ""), c.get("title") or c.get("first_name") or "")
     if not chats:
-        print("Nič som nenašiel. Napíš svojmu botovi v Telegrame „ahoj“ a spusti to znova.")
-    for cid, name in chats.items():
-        print(f"chat_id = {cid}   ({name})")
+        print("Nič som nenašiel. Napíš do skupiny správu (napr. /start@juraj_reality_bot) a spusti znova.")
+    print("===== CHATY, KDE JE BOT =====")
+    for cid, (typ, name) in chats.items():
+        print(f"chat_id = {cid}   typ: {typ}   názov: {name}")
+    print("=============================")
 
 
 # ---------------------------------------------------------------- hlavná logika
