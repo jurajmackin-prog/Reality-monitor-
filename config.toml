@@ -20,6 +20,9 @@ heslo_aplikacie = ""    # 16-miestne heslo aplikácie (nie tvoje bežné heslo!)
 komu = ""               # prázdne = na ten istý Gmail; viac adries oddeľ čiarkou
 
 [nastavenia]
+# ČO SLEDOVAŤ – zmaž alebo pridaj podľa seba:
+#   "byt", "dom", "pozemok", "chata", "garaz", "kancelaria", "priestor", "ostatne"
+druhy = ["byt", "dom", "pozemok", "chata", "garaz"]
 interval_minut = 10        # ako často kontrolovať (min. 3, odporúčam 5–15)
 strany = 5                 # koľko strán výsledkov max. prejsť (zastaví skôr, keď narazí na už videné)
 max_samostatnych_sprav = 5 # viac nových naraz → príde jeden súhrn (súkromníci navrchu)
@@ -77,8 +80,8 @@ cena_do = 0          # napr. 900  (€ mesačne)
 
 [[hladanie]]
 typ = "predaj"
-nazov = "Bazoš predaj – Bratislava +40 km"
-url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
+nazov = "Bazoš predaj BA +40 km"
+url = "https://reality.bazos.sk/predam/{druh}/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
 
 [[hladanie]]
 typ = "predaj"
@@ -99,8 +102,9 @@ url = ""
 
 [[hladanie]]
 typ = "najom"
-nazov = "Bazoš nájom – Bratislava +40 km"
-url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
+nazov = "Bazoš nájom BA +40 km"
+# druhy = ["byt", "dom"]   # ← odkomentuj, ak chceš pri nájme len niektoré druhy
+url = "https://reality.bazos.sk/prenajmu/{druh}/?hledat=&rubriky=reality&hlokalita=81101&humkreis=40&cenaod=&cenado=&order="
 
 [[hladanie]]
 typ = "najom"

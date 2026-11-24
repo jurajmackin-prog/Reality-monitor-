@@ -8,3 +8,4 @@
 - `okresy.py` = určenie okresu z textu inzerátu.
 - Pri zmenách over syntax a ak sa dá, otestuj `python monitor.py --test`.
 - Každé [[hladanie]] má `typ = "predaj" | "najom"`; predaj a nájom sa posielajú oddelene (vlastné súhrny, e-maily, voliteľne vlastné chaty TELEGRAM_CHAT_ID_PREDAJ / _NAJOM). Ceny per typ v [nastavenia.predaj] / [nastavenia.najom].
+- URL s `{druh}` sa rozbalí podľa `druhy` v [nastavenia] (byt, dom, pozemok, chata, garaz, ...) – Bazoš kategórie reality.bazos.sk/predam/<druh>/.

@@ -36,6 +36,27 @@ LOK = None  # Lokator okresov – nastaví sa v main()
 TYPY = {"predaj": ("🏠", "PREDAJ"), "najom": ("🔑", "NÁJOM")}
 
 
+# Druhy nehnuteľností – kľúč = časť adresy na Bazoši (reality.bazos.sk/predam/<druh>/)
+DRUHY = {
+    "byt": "Byt", "dom": "Dom", "pozemok": "Pozemok", "chata": "Chata/chalupa",
+    "garaz": "Garáž", "kancelaria": "Kancelária", "priestor": "Priestor", "ostatne": "Ostatné",
+}
+
+
+def rozbal_hladania(cfg):
+    """Hľadanie s {druh} v adrese sa rozbalí na jedno hľadanie pre každý zvolený druh."""
+    out = []
+    default = cfg["nastavenia"].get("druhy", ["byt"])
+    for h in cfg["hladanie"]:
+        if "{druh}" not in h.get("url", ""):
+            out.append(h)
+            continue
+        for d in h.get("druhy", default):
+            out.append({**h, "url": h["url"].replace("{druh}", d), "druh": d,
+                        "nazov": f"{h.get('nazov', '?')} – {DRUHY.get(d, d)}"})
+    return out
+
+
 def typ_hladania(search):
     t = str(search.get("typ", "")).lower().replace("á", "a")
     if t in TYPY:
@@ -351,6 +372,7 @@ def send_digest(cfg, typ, items):
             chunk += head
         price = format_price(it)
         line = (f"\n{BADGE_SHORT.get(it.get('predajca'), '•')} "
+                f"{('[' + html.escape(it['druh']) + '] ') if it.get('druh') else ''}"
                 f"{html.escape((it.get('nazov') or '(bez názvu)')[:90])}"
                 f"{' – ' + price if price else ''}\n{it['url']}\n")
         if len(chunk) + len(line) > 3800:
@@ -458,7 +480,8 @@ def format_message(item):
     typ = item.get("typ", "predaj")
     emoji, label = TYPY[typ]
     badge = {"sukromnik": "🟢 SÚKROMNÍK", "rk": "🏢 realitka", "nezname": "❔ predajca neznámy"}
-    lines = [f"{emoji} <b>{label}</b> – nový inzerát"]
+    druh = f" · {html.escape(item['druh'])}" if item.get("druh") else ""
+    lines = [f"{emoji} <b>{label}{druh}</b> – nový inzerát"]
     lines.append(html.escape(item.get("nazov") or "(bez názvu)"))
     if item.get("cena"):
         lines.append(f"💶 {format_price(item)}")
@@ -573,6 +596,7 @@ def check_search(search, cfg, con, session, test=False):
         mark_seen(con, key, name, item["nazov"], item["url"])
         con.commit()
         item["typ"], item["hladanie"] = typ, name
+        item["druh"] = DRUHY.get(search.get("druh", ""), search.get("druh", ""))
         if passes_filters(item, st, typ):
             to_send.append(item)
 
@@ -593,7 +617,7 @@ def dispatch(cfg, typ, items):
 
 
 def run_once(cfg, con, session, test=False):
-    searches = cfg["hladanie"]
+    searches = rozbal_hladania(cfg)
     if not searches:
         log("V config.toml nie je žiadne [[hladanie]].")
     nove = {t: [] for t in TYPY}
