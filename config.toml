@@ -1,0 +1,102 @@
+# =====================================================================
+#  REALITNÝ MONITOR – nastavenia (západné Slovensko)
+#  Riadky začínajúce # sú poznámky, program ich ignoruje.
+# =====================================================================
+
+[telegram]
+# Na GitHube token a chat_id NEPÍŠ SEM – vlož ich do Settings → Secrets (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID).
+# Sem ich vyplň len ak to spúšťaš na vlastnom počítači/serveri.
+token = ""
+chat_id = ""
+
+[email]
+# E-maily cez Gmail. Na GitHube NEPÍŠ SEM – vlož do Secrets: EMAIL_USER, EMAIL_APP_PASSWORD (a voliteľne EMAIL_TO).
+# Z každej kontroly príde najviac 1 e-mail so všetkými novými inzerátmi, zoradenými podľa okresov.
+od = ""                 # tvoj Gmail, napr. "juraj.mackin@gmail.com"
+heslo_aplikacie = ""    # 16-miestne heslo aplikácie (nie tvoje bežné heslo!)
+komu = ""               # prázdne = na ten istý Gmail; viac adries oddeľ čiarkou
+
+[nastavenia]
+interval_minut = 10        # ako často kontrolovať (min. 3, odporúčam 5–15)
+strany = 5                 # koľko strán výsledkov max. prejsť (zastaví skôr, keď narazí na už videné)
+max_samostatnych_sprav = 5 # viac nových naraz → príde jeden súhrn (súkromníci navrchu)
+otvarat_detail = true      # otvorí každý NOVÝ inzerát → zistí cenu a či je to súkromník
+iba_sukromnici = false     # true = inzeráty od realitiek vôbec neposielať (pri celom západe odporúčam)
+
+# --- OKRESY ---
+# Každá správa ukáže okres (📍) a súhrny sú zoskupené podľa okresov.
+# Ak chceš dostávať len niektoré okresy, vypíš ich sem. Prázdne [] = všetky.
+# "Bratislava" = všetky Bratislava I–V.
+#
+# Bratislavský:  Bratislava I, Bratislava II, Bratislava III, Bratislava IV, Bratislava V,
+#                Malacky, Pezinok, Senec
+# Trnavský:      Dunajská Streda, Galanta, Hlohovec, Piešťany, Senica, Skalica, Trnava
+# Nitriansky:    Komárno, Levice, Nitra, Nové Zámky, Šaľa, Topoľčany, Zlaté Moravce
+# Trenčiansky:   Bánovce nad Bebravou, Ilava, Myjava, Nové Mesto nad Váhom, Partizánske,
+#                Považská Bystrica, Prievidza, Púchov, Trenčín
+okresy = []                     # napr. ["Senec", "Pezinok", "Bratislava", "Trnava"]
+posielat_neznamy_okres = true   # keď sa okres nedá určiť, poslať aj tak?
+
+cena_od = 0                # 0 = bez limitu
+cena_do = 0                # napr. 250000
+musi_obsahovat = []        # aspoň jedno slovo, napr. ["balkón", "loggia", "terasa"]
+nesmie_obsahovat = ["dražba", "drazba", "spoluvlastnícky podiel", "podiel 1/"]
+
+# ---------------------------------------------------------------------
+#  HĽADANIA – ZÁPADNÉ SLOVENSKO
+#  (Bratislavský, Trnavský, Nitriansky a Trenčiansky kraj)
+#
+#  Rovnaký inzerát z viacerých hľadaní príde len raz.
+#
+#  Pre ostatné portály:
+#   1. Otvor portál, zvoľ BYTY, predaj (alebo prenájom),
+#      a lokalitu: kraje Bratislavský, Trnavský, Nitriansky, Trenčiansky
+#      (ak portál nedovolí viac krajov naraz, sprav 4 bloky – jeden na kraj).
+#   2. Ak sa dá, zaškrtni „súkromná osoba“.
+#   3. Zoraď OD NAJNOVŠÍCH.
+#   4. Skopíruj adresu z prehliadača do url = "...".
+# ---------------------------------------------------------------------
+
+# --- Bazoš nemá filter na kraj → 5 okruhov po 50 km pokrýva celý západ ---
+[[hladanie]]
+nazov = "Bazoš – Bratislava +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+nazov = "Bazoš – Trnava/Senica +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=90501&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+nazov = "Bazoš – Nitra +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+nazov = "Bazoš – Nové Zámky/Komárno +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94001&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+nazov = "Bazoš – Trenčín +50 km"
+url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=91101&humkreis=50&cenaod=&cenado=&order="
+
+# --- Ostatné portály: doplň URL podľa postupu vyššie ---
+[[hladanie]]
+nazov = "Nehnutelnosti.sk – byty západ"
+url = ""
+
+[[hladanie]]
+nazov = "Reality.sk – byty západ"
+url = ""
+
+[[hladanie]]
+nazov = "TopReality.sk – byty západ"
+url = ""
+
+[[hladanie]]
+nazov = "Byty.sk – západ"
+url = ""
+
+[[hladanie]]
+nazov = "Reality.bazar.sk – západ"
+url = ""
+
+# Chceš aj prenájmy? Skopíruj bloky a v URL Bazoša zmeň /predam/ na /prenajmu/.
