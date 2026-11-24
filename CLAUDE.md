@@ -7,3 +7,4 @@
 - Nastavenia pre používateľa sú v `config.toml` (portály = URL vyhľadávaní). Tajomstvá (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, EMAIL_USER, EMAIL_APP_PASSWORD, EMAIL_TO) sú v GitHub Secrets – nikdy ich nepísať do súborov.
 - `okresy.py` = určenie okresu z textu inzerátu.
 - Pri zmenách over syntax a ak sa dá, otestuj `python monitor.py --test`.
+- Každé [[hladanie]] má `typ = "predaj" | "najom"`; predaj a nájom sa posielajú oddelene (vlastné súhrny, e-maily, voliteľne vlastné chaty TELEGRAM_CHAT_ID_PREDAJ / _NAJOM). Ceny per typ v [nastavenia.predaj] / [nastavenia.najom].

@@ -4,6 +4,9 @@
 # =====================================================================
 
 [telegram]
+# PREDAJ a NÁJOM chodia vždy oddelene (🏠 PREDAJ / 🔑 NÁJOM).
+# Chceš ich mať v dvoch rôznych Telegram chatoch? Pridaj do GitHub Secrets
+# TELEGRAM_CHAT_ID_PREDAJ a/alebo TELEGRAM_CHAT_ID_NAJOM (inak ide všetko do TELEGRAM_CHAT_ID).
 # Na GitHube token a chat_id NEPÍŠ SEM – vlož ich do Settings → Secrets (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID).
 # Sem ich vyplň len ak to spúšťaš na vlastnom počítači/serveri.
 token = ""
@@ -51,64 +54,118 @@ musi_obsahovat = []        # aspoň jedno slovo, napr. ["balkón", "loggia", "te
 nesmie_obsahovat = ["dražba", "drazba", "spoluvlastnícky podiel", "podiel 1/"]
 
 # ---------------------------------------------------------------------
+#  CENY ZVLÁŠŤ PRE PREDAJ A NÁJOM
+#  (prepíšu spoločné nastavenia vyššie; 0 = bez limitu)
+# ---------------------------------------------------------------------
+[nastavenia.predaj]
+cena_od = 0
+cena_do = 0          # napr. 250000
+
+[nastavenia.najom]
+cena_od = 0
+cena_do = 0          # napr. 900  (€ mesačne)
+
+# ---------------------------------------------------------------------
 #  HĽADANIA – ZÁPADNÉ SLOVENSKO
-#  (Bratislavský, Trnavský, Nitriansky a Trenčiansky kraj)
-#
+#  Každé hľadanie má typ = "predaj" alebo "najom".
 #  Rovnaký inzerát z viacerých hľadaní príde len raz.
 #
-#  Pre ostatné portály:
-#   1. Otvor portál, zvoľ BYTY, predaj (alebo prenájom),
-#      a lokalitu: kraje Bratislavský, Trnavský, Nitriansky, Trenčiansky
-#      (ak portál nedovolí viac krajov naraz, sprav 4 bloky – jeden na kraj).
-#   2. Ak sa dá, zaškrtni „súkromná osoba“.
-#   3. Zoraď OD NAJNOVŠÍCH.
-#   4. Skopíruj adresu z prehliadača do url = "...".
+#  Ďalší portál pridáš tak, že naň v prehliadači nastavíš byty, predaj
+#  alebo prenájom, 4 západné kraje, zoradenie OD NAJNOVŠÍCH a skopíruješ
+#  adresu do url = "..." (a nastavíš správny typ).
 # ---------------------------------------------------------------------
 
-# --- Bazoš nemá filter na kraj → 5 okruhov po 50 km pokrýva celý západ ---
+# ===================== 🏠 PREDAJ =====================
+# Bazoš nemá filter na kraj → 6 okruhov po 50 km pokrýva celý západ
+
 [[hladanie]]
-nazov = "Bazoš – Bratislava +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Bratislava +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Trnava/Senica +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Trnava/Senica +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=90501&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Nitra +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Nitra +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Komárno +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Komárno +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=94501&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Levice +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Levice +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=93401&humkreis=50&cenaod=&cenado=&order="
 
 [[hladanie]]
-nazov = "Bazoš – Trenčín +50 km"
+typ = "predaj"
+nazov = "Bazoš predaj – Trenčín +50 km"
 url = "https://reality.bazos.sk/predam/byt/?hledat=&rubriky=reality&hlokalita=91101&humkreis=50&cenaod=&cenado=&order="
 
-# --- Ostatné portály: doplň URL podľa postupu vyššie ---
 [[hladanie]]
-nazov = "Nehnutelnosti.sk – byty západ"
+typ = "predaj"
+nazov = "Nehnutelnosti.sk – predaj"
 url = ""
 
 [[hladanie]]
-nazov = "Reality.sk – byty západ"
+typ = "predaj"
+nazov = "Reality.sk – predaj"
 url = ""
 
 [[hladanie]]
-nazov = "TopReality.sk – byty západ"
+typ = "predaj"
+nazov = "TopReality.sk – predaj"
+url = ""
+
+# ===================== 🔑 NÁJOM =====================
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Bratislava +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=81101&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Trnava/Senica +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=90501&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Nitra +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=94901&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Komárno +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=94501&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Levice +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=93401&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Bazoš nájom – Trenčín +50 km"
+url = "https://reality.bazos.sk/prenajmu/byt/?hledat=&rubriky=reality&hlokalita=91101&humkreis=50&cenaod=&cenado=&order="
+
+[[hladanie]]
+typ = "najom"
+nazov = "Nehnutelnosti.sk – prenájom"
 url = ""
 
 [[hladanie]]
-nazov = "Byty.sk – západ"
+typ = "najom"
+nazov = "Reality.sk – prenájom"
 url = ""
 
 [[hladanie]]
-nazov = "Reality.bazar.sk – západ"
+typ = "najom"
+nazov = "TopReality.sk – prenájom"
 url = ""
-
-# Chceš aj prenájmy? Skopíruj bloky a v URL Bazoša zmeň /predam/ na /prenajmu/.
