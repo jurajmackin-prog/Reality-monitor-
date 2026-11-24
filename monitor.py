@@ -227,6 +227,17 @@ def is_detail_link(abs_url, search_domain):
     return any(re.search(pat, p.path) for pat in patterns)
 
 
+def _vyzera_ako_cena(text):
+    t = text.strip()
+    return bool(t) and (t[0].isdigit() or t.lower().startswith("cena")) and ("€" in t or "eur" in t.lower())
+
+
+def nadpis_z_adresy(url):
+    """Záložný nadpis z adresy: .../detail/ID/kompletne-zrekonstruovany-3-izbovy-byt → Kompletne zrekonstruovany 3 izbovy byt"""
+    slug = urlparse(url).path.rstrip("/").split("/")[-1].removesuffix(".php")
+    return slug.replace("-", " ").capitalize() if slug and not slug.isdigit() else ""
+
+
 def extract_listings(page_html, page_url):
     """Vráti {kluc: {"url", "nazov"}} všetkých inzerátov na stránke výsledkov."""
     soup = BeautifulSoup(page_html, "html.parser")
@@ -239,8 +250,13 @@ def extract_listings(page_html, page_url):
         key = listing_key(abs_url)
         text = " ".join(a.get_text(" ", strip=True).split()) or a.get("title", "")
         item = found.setdefault(key, {"url": abs_url.split("?")[0] if "bazos" in domain else abs_url, "nazov": ""})
+        if _vyzera_ako_cena(text):  # text odkazu s cenou nie je nadpis
+            text = ""
         if len(text) > len(item["nazov"]):
             item["nazov"] = text[:200]
+    for item in found.values():
+        if not item["nazov"]:
+            item["nazov"] = nadpis_z_adresy(item["url"])
     return found
 
 
@@ -358,6 +374,8 @@ def tg_send(cfg, text, typ=None):
             time.sleep(10 * pokus)
             continue
         if r.ok:
+            ciel = {"predaj": "chat PREDAJ", "najom": "chat NÁJOM"}.get(typ, "chat")
+            log(f"  ✓ Telegram doručil ({ciel}, …{chat_id[-4:]}): {text.splitlines()[0][:60]}")
             break
         if r.status_code == 429:  # príliš veľa správ → počkať, koľko Telegram žiada
             try:
